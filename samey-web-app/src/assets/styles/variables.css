@@ -1,0 +1,26 @@
+/* src/assets/styles/variables.css */
+:root {
+  /* Core colors */
+  --theme-color: #000000;
+  --theme-secondary: #333333;
+  --theme-accent: #666666;
+  --background-color: #ffffff;
+  --card-background: #ffffff;
+
+  /* Text colors */
+  --text-dark: #000000;
+  --text-light: #666666;
+  --text-muted: #999999;
+  --text-color: #ffffff;
+  --title: #000000;
+
+  /* Status colors - keeping these for functional purposes */
+  --success: #000000;
+  --warning: #000000;
+  --error: #000000;
+  --info: #000000;
+
+  /* Gradients */
+  --dashboard-gradient: linear-gradient(135deg, #000000 0%, #333333 100%);
+  --hover-gradient: linear-gradient(135deg, #333333 0%, #666666 100%);
+}
