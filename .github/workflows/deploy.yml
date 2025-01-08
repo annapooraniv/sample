@@ -1,0 +1,52 @@
+name: Deploy Vue.js App to Google Cloud
+
+on:
+  push:
+    branches:
+      - main  # Trigger this workflow on push to the main branch (change if needed)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+
+    steps:
+      # Step 1: Checkout code from GitHub repository
+      - name: Checkout code
+        uses: actions/checkout@v2  # This step checks out the code in your repository
+
+      # Step 2: Set up Google Cloud credentials
+      - name: Set up Google Cloud credentials
+        uses: google-github-actions/auth@v0
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CLOUD_KEY }}  # Use secret for Google Cloud service account key
+
+      # Step 3: Set up Docker for Google Cloud Registry
+      - name: Configure Docker for Google Cloud
+        run: |
+          gcloud auth configure-docker
+
+      # Step 4: Build Docker image for Vue.js app
+      - name: Build Docker image
+        run: |
+          docker build -t gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:latest .  # Use Google Cloud project ID secret
+
+      # Step 5: Log in to Docker Hub (if using Docker Hub as well)
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username from GitHub secrets
+          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password from GitHub secrets
+
+      # Step 6: Push Docker image to Google Container Registry (GCR)
+      - name: Push Docker image to Google Container Registry
+        run: |
+          docker push gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:latest
+
+      # Step 7: Deploy the Docker image to Google Cloud Run
+      - name: Deploy to Google Cloud Run
+        run: |
+          gcloud run deploy vue-app \
+            --image gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:latest \
+            --platform managed \
+            --region us-central1 \
+            --allow-unauthenticated  # Allow public access (adjust region as needed)
