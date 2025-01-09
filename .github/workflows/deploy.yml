@@ -3,50 +3,73 @@ name: Deploy Vue.js App to Google Cloud
 on:
   push:
     branches:
-      - main  # Trigger this workflow on push to the main branch (change if needed)
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
-
+    runs-on: ubuntu-latest
+    
     steps:
-      # Step 1: Checkout code from GitHub repository
+      # Step 1: Checkout code
       - name: Checkout code
-        uses: actions/checkout@v2  # This step checks out the code in your repository
+        uses: actions/checkout@v2
 
-      # Step 2: Set up Google Cloud credentials
-      - name: Set up Google Cloud credentials
-        uses: google-github-actions/auth@v0
+      # Step 2: Setup Node.js for Vue app build
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
         with:
-          credentials_json: ${{ secrets.GOOGLE_CLOUD_KEY }}  # Use secret for Google Cloud service account key
+          node-version: '16'
 
-      # Step 3: Set up Docker for Google Cloud Registry
+      # Step 3: Install dependencies and build Vue app
+      - name: Install Dependencies
+        run: |
+          cd samey-web-app
+          npm install
+
+      - name: Build Vue app
+        run: |
+          cd samey-web-app
+          npm run build
+
+      # Step 4: Set up Google Cloud credentials
+      - name: Set up Google Cloud credentials
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GOOGLE_CLOUD_KEY }}
+
+      # Step 5: Setup Google Cloud CLI
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GOOGLE_PROJECT_ID }}
+
+      # Step 6: Configure Docker for Google Cloud
       - name: Configure Docker for Google Cloud
         run: |
           gcloud auth configure-docker
 
-      # Step 4: Build Docker image for Vue.js app
+      # Step 7: Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:latest .  # Use Google Cloud project ID secret
+          docker build -t gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:${{ github.sha }} .
 
-      # Step 5: Log in to Docker Hub (if using Docker Hub as well)
-      - name: Log in to Docker Hub
+      # Step 8: Docker Hub Login (optional)
+      - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}  # Docker Hub username from GitHub secrets
-          password: ${{ secrets.DOCKER_PASSWORD }}  # Docker Hub password from GitHub secrets
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # Step 6: Push Docker image to Google Container Registry (GCR)
-      - name: Push Docker image to Google Container Registry
+      # Step 9: Push to Google Container Registry
+      - name: Push Docker image to GCR
         run: |
-          docker push gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:latest
+          docker push gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:${{ github.sha }}
 
-      # Step 7: Deploy the Docker image to Google Cloud Run
-      - name: Deploy to Google Cloud Run
+      # Step 10: Deploy to Cloud Run
+      - name: Deploy to Cloud Run
         run: |
           gcloud run deploy vue-app \
-            --image gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:latest \
+            --image gcr.io/${{ secrets.GOOGLE_PROJECT_ID }}/vue-app:${{ github.sha }} \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated  # Allow public access (adjust region as needed)
+            --allow-unauthenticated
